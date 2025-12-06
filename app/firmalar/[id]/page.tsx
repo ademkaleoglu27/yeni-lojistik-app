@@ -4,63 +4,82 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, MapPin, User, Phone, Save, Clock } from "lucide-react";
+// Supabase bağlantısı
+import { supabase } from "@/lib/supabase";
 
 export default function FirmaDetaySayfasi() {
-  const params = useParams(); // URL'deki ID'yi (köşeli parantez içini) okur
-  const router = useRouter();
-  
+  const params = useParams();
   const [firma, setFirma] = useState<any>(null);
   const [yeniNot, setYeniNot] = useState("");
+  const [yukleniyor, setYukleniyor] = useState(true);
+  const [kaydediliyor, setKaydediliyor] = useState(false);
 
-  // Sayfa açılınca ID'ye göre firmayı bul
+  // 1. Sayfa açılınca ID'ye göre firmayı BULUTTAN çek
   useEffect(() => {
-    const kayitliVeri = localStorage.getItem("firmalar");
-    if (kayitliVeri && params.id) {
-      const liste = JSON.parse(kayitliVeri);
-      // URL'deki ID ile eşleşen firmayı bul
-      const bulunanFirma = liste.find((f: any) => f.id.toString() === params.id);
-      
-      if (bulunanFirma) {
-        // Eğer firmanın notları yoksa boş liste başlat
-        if (!bulunanFirma.notlar) bulunanFirma.notlar = [];
-        setFirma(bulunanFirma);
+    async function firmayiGetir() {
+      if (!params.id) return;
+
+      const { data, error } = await supabase
+        .from("firmalar")
+        .select("*")
+        .eq("id", params.id)
+        .single(); // Sadece tek bir kayıt getir
+
+      if (error) {
+        console.error("Firma bulunamadı:", error);
+      } else {
+        // Eğer notlar boşsa boş liste olarak ayarla
+        if (!data.notlar) data.notlar = [];
+        setFirma(data);
       }
+      setYukleniyor(false);
     }
+
+    firmayiGetir();
   }, [params.id]);
 
-  // Not Kaydetme Fonksiyonu
-  const notEkle = () => {
+  // 2. Notu BULUTA kaydet
+  const notEkle = async () => {
     if (!yeniNot.trim()) return;
+    setKaydediliyor(true);
 
-    // 1. Yeni notu oluştur
+    // Yeni not objesi
     const notObjesi = {
       id: Date.now(),
       tarih: new Date().toLocaleDateString("tr-TR") + " " + new Date().toLocaleTimeString("tr-TR").slice(0,5),
       metin: yeniNot
     };
 
-    // 2. Firmanın not listesine ekle
-    const guncelFirma = { ...firma, notlar: [notObjesi, ...firma.notlar] };
-    setFirma(guncelFirma); // Ekranda güncelle
-    setYeniNot(""); // Kutuyu temizle
+    // Mevcut notların üzerine yenisini ekle
+    const guncelNotlar = [notObjesi, ...(firma.notlar || [])];
 
-    // 3. Ana hafızayı (LocalStorage) güncelle
-    const tumFirmalar = JSON.parse(localStorage.getItem("firmalar") || "[]");
-    const yeniListe = tumFirmalar.map((f: any) => f.id === firma.id ? guncelFirma : f);
-    localStorage.setItem("firmalar", JSON.stringify(yeniListe));
+    // Supabase'i güncelle
+    const { error } = await supabase
+      .from("firmalar")
+      .update({ notlar: guncelNotlar })
+      .eq("id", firma.id);
+
+    if (error) {
+      alert("Not kaydedilirken hata oluştu!");
+    } else {
+      // Ekranı güncelle
+      setFirma({ ...firma, notlar: guncelNotlar });
+      setYeniNot("");
+    }
+    setKaydediliyor(false);
   };
 
-  if (!firma) return <div className="p-10 text-center">Yükleniyor...</div>;
+  if (yukleniyor) return <div className="p-10 text-center text-gray-500">Firma bilgileri yükleniyor...</div>;
+  if (!firma) return <div className="p-10 text-center text-red-500">Firma bulunamadı!</div>;
 
   return (
     <div className="p-4 max-w-2xl mx-auto pb-20">
-      {/* Geri Dön */}
       <Link href="/firmalar" className="flex items-center gap-2 text-gray-500 mb-6 hover:text-blue-600">
         <ArrowLeft size={20} />
         <span>Listeye Dön</span>
       </Link>
 
-      {/* Firma Başlık Kartı */}
+      {/* Firma Bilgileri */}
       <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-2">{firma.ad}</h1>
         <div className="flex flex-col gap-2 text-gray-600">
@@ -93,17 +112,22 @@ export default function FirmaDetaySayfasi() {
         ></textarea>
         <button 
           onClick={notEkle}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg mt-2 w-full hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium"
+          disabled={kaydediliyor}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg mt-2 w-full hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium disabled:opacity-50"
         >
-          <Save size={18} />
-          Notu Kaydet
+          {kaydediliyor ? "Kaydediliyor..." : (
+            <>
+              <Save size={18} />
+              Notu Kaydet
+            </>
+          )}
         </button>
       </div>
 
-      {/* Geçmiş Notlar Listesi */}
+      {/* Geçmiş Notlar */}
       <h3 className="font-bold text-lg mb-4 text-gray-800">Geçmiş Görüşmeler</h3>
       <div className="space-y-3">
-        {firma.notlar.length === 0 ? (
+        {(!firma.notlar || firma.notlar.length === 0) ? (
           <p className="text-gray-500 text-sm italic">Henüz not eklenmemiş.</p>
         ) : (
           firma.notlar.map((not: any) => (

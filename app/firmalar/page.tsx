@@ -3,24 +3,44 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, MapPin, Phone, User, Building, Trash2 } from "lucide-react";
+// DİKKAT: Az önce kurduğumuz Supabase bağlantısını çağırıyoruz
+import { supabase } from "../../lib/supabase";
 
 export default function FirmalarSayfasi() {
   const [firmalar, setFirmalar] = useState<any[]>([]);
 
-  // Sayfa açılınca hafızadaki verileri oku
+  // Sayfa açılınca çalışır
   useEffect(() => {
-    const kayitliVeri = localStorage.getItem("firmalar");
-    if (kayitliVeri) {
-      setFirmalar(JSON.parse(kayitliVeri));
-    }
+    verileriGetir();
   }, []);
 
-  // Silme Fonksiyonu
-  const sil = (id: number) => {
+  // 1. BULUTTAN VERİ ÇEKME FONKSİYONU
+  async function verileriGetir() {
+    // "firmalar" tablosuna git, her şeyi (*) al, ID'ye göre tersten sırala (en yeni en üstte)
+    const { data, error } = await supabase
+      .from("firmalar")
+      .select("*")
+      .order('id', { ascending: false });
+    
+    if (error) {
+      console.error("Veri çekme hatası:", error);
+    } else {
+      setFirmalar(data || []);
+    }
+  }
+
+  // 2. BULUTTAN SİLME FONKSİYONU
+  const sil = async (id: number) => {
     if (confirm("Bu firmayı silmek istediğine emin misin?")) {
-      const yeniListe = firmalar.filter(f => f.id !== id);
-      setFirmalar(yeniListe);
-      localStorage.setItem("firmalar", JSON.stringify(yeniListe));
+      // Supabase'den sil
+      const { error } = await supabase.from("firmalar").delete().eq("id", id);
+      
+      if (!error) {
+        // Ekrandaki listeden de sil (tekrar yüklemeye gerek kalmasın)
+        setFirmalar(firmalar.filter(f => f.id !== id));
+      } else {
+        alert("Silinirken bir hata oluştu!");
+      }
     }
   };
 
@@ -44,7 +64,7 @@ export default function FirmalarSayfasi() {
             </div>
           </div>
           <h3 className="text-lg font-medium text-gray-900">Henüz firma yok</h3>
-          <p className="mt-1">Yukarıdaki butona basarak ilk firmanı ekle.</p>
+          <p className="mt-1">Veri tabanı şu an boş. Yeni ekleyerek başlayın.</p>
         </div>
       ) : (
         // LİSTE DOLUYSA
@@ -76,7 +96,6 @@ export default function FirmalarSayfasi() {
                   <Phone size={20} />
                 </a>
                 
-                {/* İŞTE BURASI DEĞİŞTİ: Detay Butonu artık Link Oldu */}
                 <Link 
                   href={`/firmalar/${firma.id}`}
                   className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"

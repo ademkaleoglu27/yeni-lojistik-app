@@ -1,14 +1,16 @@
-"use client"; // BU SATIR ÇOK ÖNEMLİ (Etkileşim için)
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Save } from "lucide-react";
+// Supabase bağlantısını çağırıyoruz
+import { supabase } from "@/lib/supabase";
 
 export default function YeniFirmaSayfasi() {
-  const router = useRouter(); // Sayfa değiştirmek için araç
+  const router = useRouter();
+  const [yukleniyor, setYukleniyor] = useState(false);
 
-  // Form verilerini tutan değişkenler (State)
   const [formData, setFormData] = useState({
     ad: "",
     sehir: "",
@@ -16,27 +18,32 @@ export default function YeniFirmaSayfasi() {
     telefon: "",
   });
 
-  // Kaydet butonuna basınca çalışacak fonksiyon
-  const kaydet = (e: React.FormEvent) => {
-    e.preventDefault(); // Sayfanın yenilenmesini engelle
+  // KAYDETME FONKSİYONU (ARTIK BULUTA GÖNDERİYOR)
+  const kaydet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setYukleniyor(true); // Butonu pasif yap (çift tıklamayı önle)
 
-    // 1. Mevcut listeyi hafızadan (LocalStorage) çek
-    const mevcutVeri = localStorage.getItem("firmalar");
-    const firmalar = mevcutVeri ? JSON.parse(mevcutVeri) : [];
-
-    // 2. Yeni firmayı oluştur
+    // 1. Veriyi hazırla
     const yeniFirma = {
-      id: Date.now(), // Rastgele benzersiz bir numara
-      ...formData,    // Formdaki bilgileri al
+      ad: formData.ad,
+      sehir: formData.sehir,
+      yetkili: formData.yetkili,
+      telefon: formData.telefon,
+      notlar: [] // İlk başta boş not listesi
     };
 
-    // 3. Listeye ekle ve tekrar hafızaya yaz
-    firmalar.push(yeniFirma);
-    localStorage.setItem("firmalar", JSON.stringify(firmalar));
+    // 2. Supabase'e gönder
+    const { error } = await supabase
+      .from("firmalar")
+      .insert([yeniFirma]);
 
-    // 4. Listeye geri gönder
-    alert("Firma başarıyla kaydedildi!");
-    router.push("/firmalar");
+    if (error) {
+      alert("Hata oluştu: " + error.message);
+      setYukleniyor(false);
+    } else {
+      alert("Firma buluta kaydedildi!");
+      router.push("/firmalar"); // Listeye geri dön
+    }
   };
 
   return (
@@ -97,9 +104,17 @@ export default function YeniFirmaSayfasi() {
             />
           </div>
 
-          <button type="submit" className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition flex justify-center items-center gap-2 mt-4">
-            <Save size={20} />
-            Kaydet
+          <button 
+            type="submit" 
+            disabled={yukleniyor}
+            className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition flex justify-center items-center gap-2 mt-4 disabled:opacity-50"
+          >
+            {yukleniyor ? "Kaydediliyor..." : (
+              <>
+                <Save size={20} />
+                Kaydet
+              </>
+            )}
           </button>
         </form>
       </div>
