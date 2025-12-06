@@ -1,149 +1,158 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { ExternalLink, Fuel, Map, Store, Calculator, TrendingDown } from "lucide-react";
+import { useState } from 'react';
 
-export default function TeklifSayfasi() {
-  const [tabelaFiyati, setTabelaFiyati] = useState<number | string>("");
-  
-  // 1. Senaryo: Türkiye Geneli
-  const [iskontoTR, setIskontoTR] = useState(4.0);
-  
-  // 2. Senaryo: Anlaşmalı İstasyon
-  const [iskontoIstasyon, setIskontoIstasyon] = useState(6.0);
+function toNumber(value: string): number {
+  const n = parseFloat(value.replace(',', '.'));
+  return isNaN(n) ? 0 : n;
+}
 
-  // Hesaplamalar
-  const fiyat = Number(tabelaFiyati) || 0;
-  
-  // TR Geneli Hesap
-  const indirimTR = (fiyat * iskontoTR) / 100;
-  const netTR = fiyat - indirimTR;
+export default function TeklifPage() {
+  const [basePrice, setBasePrice] = useState('50'); // TL / L
+  const [volumeMonthly, setVolumeMonthly] = useState('10000'); // Litre
+  const [discountTR, setDiscountTR] = useState('3'); // %
+  const [discountStation, setDiscountStation] = useState('7'); // %
 
-  // İstasyon Hesap
-  const indirimIstasyon = (fiyat * iskontoIstasyon) / 100;
-  const netIstasyon = fiyat - indirimIstasyon;
+  const base = toNumber(basePrice);
+  const monthlyLiters = toNumber(volumeMonthly);
+  const dTR = toNumber(discountTR);
+  const dStation = toNumber(discountStation);
+
+  function calcScenario(discountPercent: number) {
+    if (base <= 0 || monthlyLiters <= 0 || discountPercent < 0) {
+      return {
+        newPrice: 0,
+        savePerLitre: 0,
+        monthlySave: 0,
+        yearlySave: 0,
+      };
+    }
+
+    const newPrice = base * (1 - discountPercent / 100);
+    const savePerLitre = base - newPrice;
+    const monthlySave = savePerLitre * monthlyLiters;
+    const yearlySave = monthlySave * 12;
+
+    return { newPrice, savePerLitre, monthlySave, yearlySave };
+  }
+
+  const sTR = calcScenario(dTR);
+  const sStation = calcScenario(dStation);
+
+  const formValid = base > 0 && monthlyLiters > 0;
 
   return (
-    <div className="p-4 max-w-lg mx-auto pb-24">
-      
-      {/* BAŞLIK */}
-      <div className="mb-6 mt-2 text-center">
-        <h1 className="text-2xl font-bold text-gray-800">Fiyat Karşılaştırma</h1>
-        <p className="text-gray-500 text-sm">İki farklı modeli müşteriye sun.</p>
+    <div className="teklif-page">
+      <h1 className="teklif-title">Karlılık / İskonto Hesabı</h1>
+      <p className="teklif-info">
+        Petrol Ofisi sitesinden güncel akaryakıt fiyatına bakın, pompa fiyatını TL/L
+        olarak girin. İskonto oranlarını ve aylık tahmini tüketimi yazarak
+        müşterinizin aylık / yıllık kazancını gösterin.
+      </p>
+
+      <a
+        href="https://www.petrolofisi.com.tr/akaryakit-fiyatlari"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="po-link"
+      >
+        Petrol Ofisi Güncel Fiyat Listesini Aç
+      </a>
+
+      <div className="teklif-form">
+        <div className="field">
+          <label>Pompa Fiyatı (TL / Litre)</label>
+          <input
+            type="text"
+            value={basePrice}
+            onChange={(e) => setBasePrice(e.target.value)}
+            placeholder="Örn: 54.40"
+          />
+        </div>
+        <div className="field">
+          <label>Aylık Tahmini Tüketim (Litre)</label>
+          <input
+            type="number"
+            value={volumeMonthly}
+            onChange={(e) => setVolumeMonthly(e.target.value)}
+            placeholder="Örn: 15000"
+          />
+        </div>
+        <div className="field">
+          <label>Türkiye Geneli İskonto Oranı (%)</label>
+          <input
+            type="number"
+            value={discountTR}
+            onChange={(e) => setDiscountTR(e.target.value)}
+          />
+        </div>
+        <div className="field">
+          <label>Anlaşmalı İstasyon İskonto Oranı (%)</label>
+          <input
+            type="number"
+            value={discountStation}
+            onChange={(e) => setDiscountStation(e.target.value)}
+          />
+        </div>
       </div>
 
-      {/* 1. PETROL OFİSİ LİNKİ (Kırmızı Kart) */}
-      <div className="bg-red-50 border border-red-100 p-4 rounded-xl mb-6 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="bg-white p-2 rounded-full text-red-600 shadow-sm">
-            <Fuel size={20} />
-          </div>
-          <div>
-            <h3 className="font-bold text-red-800 text-sm">Güncel Fiyatlar</h3>
-            <p className="text-[10px] text-red-600">PO listesini kontrol et</p>
-          </div>
-        </div>
-        <a 
-          href="https://www.petrolofisi.com.tr/akaryakit-fiyatlari" 
-          target="_blank" 
-          className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-700 transition"
-        >
-          Listeyi Aç <ExternalLink size={14} />
-        </a>
-      </div>
-
-      {/* 2. TABELA FİYATI GİRİŞİ */}
-      <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 mb-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 bg-blue-100 w-16 h-16 rounded-bl-full -mr-8 -mt-8"></div>
-        
-        <label className="text-xs font-bold text-gray-500 uppercase flex items-center gap-1 mb-2">
-          <Calculator size={14} />
-          Tabela Fiyatı (TL)
-        </label>
-        <input 
-          type="number" 
-          placeholder="Örn: 45.00" 
-          className="w-full p-3 text-3xl font-bold text-center text-gray-800 bg-gray-50 rounded-xl border border-gray-200 focus:border-blue-500 focus:bg-white outline-none transition"
-          value={tabelaFiyati}
-          onChange={(e) => setTabelaFiyati(e.target.value)}
-        />
-        <p className="text-center text-xs text-gray-400 mt-2">Şehir bazlı pompa fiyatını giriniz.</p>
-      </div>
-
-      {/* 3. KARŞILAŞTIRMA KARTLARI */}
-      <div className="grid gap-4">
-
-        {/* SENARYO A: TÜRKİYE GENELİ */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-blue-100 relative">
-          <div className="flex items-center gap-2 mb-4 text-blue-700">
-            <Map size={20} />
-            <h3 className="font-bold">Türkiye Geneli</h3>
-          </div>
-
-          {/* İskonto Ayarı A */}
-          <div className="mb-4">
-            <div className="flex justify-between text-xs font-bold text-gray-500 mb-1">
-              <span>İskonto</span>
-              <span className="text-blue-600">%{iskontoTR}</span>
-            </div>
-            <input 
-              type="range" min="0" max="15" step="0.5" 
-              value={iskontoTR} onChange={(e) => setIskontoTR(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-            />
-          </div>
-
-          {/* Sonuç A */}
-          <div className="bg-blue-50 p-3 rounded-xl flex justify-between items-center">
-            <span className="text-xs text-blue-400 font-medium">Net Fiyat</span>
-            <span className="text-xl font-bold text-blue-700">{netTR.toFixed(2)} ₺</span>
-          </div>
-        </div>
-
-        {/* SENARYO B: ANLAŞMALI İSTASYON */}
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-purple-100 relative">
-          <div className="absolute top-3 right-3 bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-1 rounded-full">
-            AVANTAJLI
-          </div>
-          <div className="flex items-center gap-2 mb-4 text-purple-700">
-            <Store size={20} />
-            <h3 className="font-bold">Anlaşmalı İstasyon</h3>
-          </div>
-
-          {/* İskonto Ayarı B */}
-          <div className="mb-4">
-            <div className="flex justify-between text-xs font-bold text-gray-500 mb-1">
-              <span>İskonto</span>
-              <span className="text-purple-600">%{iskontoIstasyon}</span>
-            </div>
-            <input 
-              type="range" min="0" max="15" step="0.5" 
-              value={iskontoIstasyon} onChange={(e) => setIskontoIstasyon(Number(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-            />
-          </div>
-
-          {/* Sonuç B */}
-          <div className="bg-purple-50 p-3 rounded-xl flex justify-between items-center">
-            <span className="text-xs text-purple-400 font-medium">Net Fiyat</span>
-            <span className="text-xl font-bold text-purple-700">{netIstasyon.toFixed(2)} ₺</span>
-          </div>
-        </div>
-
-      </div>
-
-      {/* KARŞILAŞTIRMA ÖZETİ */}
-      {fiyat > 0 && (
-        <div className="mt-6 p-4 bg-gray-900 rounded-xl text-white text-center shadow-lg">
-          <p className="text-sm text-gray-400 mb-1">Anlaşmalı İstasyon Farkı</p>
-          <div className="text-2xl font-bold text-green-400 flex justify-center items-center gap-2">
-            <TrendingDown size={24} />
-            {(netTR - netIstasyon).toFixed(2)} TL
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Litre başına daha fazla kazanç</p>
-        </div>
+      {!formValid && (
+        <p className="error">
+          Hesaplama yapmak için pompa fiyatı ve aylık litre alanlarını doldurun.
+        </p>
       )}
 
+      {formValid && (
+        <div className="teklif-grid">
+          {/* Türkiye geneli */}
+          <div className="teklif-card">
+            <div className="pill-badge">Türkiye Geneli İskonto</div>
+            <h2>%{dTR.toFixed(2)} iskonto</h2>
+            <p className="price-line">
+              <span>Yeni fiyat:</span>
+              <strong>{sTR.newPrice.toFixed(3)} TL / L</strong>
+            </p>
+            <p className="price-line">
+              <span>Litre başına kazanç:</span>
+              <strong>{sTR.savePerLitre.toFixed(3)} TL</strong>
+            </p>
+            <div className="gain-box">
+              <p>
+                <span>Aylık kazanç:</span>
+                <strong>{sTR.monthlySave.toFixed(2)} TL</strong>
+              </p>
+              <p>
+                <span>Yıllık kazanç:</span>
+                <strong>{sTR.yearlySave.toFixed(2)} TL</strong>
+              </p>
+            </div>
+          </div>
+
+          {/* Anlaşmalı istasyon */}
+          <div className="teklif-card highlight">
+            <div className="pill-badge pill-badge-accent">Anlaşmalı İstasyon</div>
+            <h2>%{dStation.toFixed(2)} iskonto</h2>
+            <p className="price-line">
+              <span>Yeni fiyat:</span>
+              <strong>{sStation.newPrice.toFixed(3)} TL / L</strong>
+            </p>
+            <p className="price-line">
+              <span>Litre başına kazanç:</span>
+              <strong>{sStation.savePerLitre.toFixed(3)} TL</strong>
+            </p>
+            <div className="gain-box">
+              <p>
+                <span>Aylık kazanç:</span>
+                <strong>{sStation.monthlySave.toFixed(2)} TL</strong>
+              </p>
+              <p>
+                <span>Yıllık kazanç:</span>
+                <strong>{sStation.yearlySave.toFixed(2)} TL</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,39 +1,49 @@
-import Link from "next/link";
-import { Building2, Globe } from "lucide-react";
+import Link from 'next/link';
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="p-4 flex flex-col items-center justify-center min-h-[80vh] gap-8">
-      
-      {/* Başlık Alanı */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-blue-600">Hoş Geldiniz</h1>
-        <p className="mt-2 text-gray-600">Lojistik ve Saha Satış Yönetim Paneli</p>
+    <main className="home">
+      <div className="home-inner">
+        <h1 className="home-title">Hoş Geldiniz</h1>
+        <p className="home-subtitle">
+          Lojistik ve Saha Satış Yönetim Paneli
+        </p>
+
+        <div className="home-actions">
+          {/* Firmaları Yönet kartı */}
+          <Link href="/firmalar" className="home-card">
+            <div>
+              <h2>Firmaları Yönet</h2>
+              <p>
+                Mevcut firma listenizi yönetin, CRM tarafında müşteri bilgilerini ve
+                görüşme notlarını tutun, teklif ve fiyatları takip edin.
+              </p>
+            </div>
+            <span className="home-card-cta">CRM’e git →</span>
+          </Link>
+
+          {/* İnternetten Firma Bul kartı */}
+          <Link href="/firma-bul" className="home-card">
+            <div>
+              <h2>İnternetten Firma Bul</h2>
+              <p>
+                Google üzerinden lojistik, turizm vb. firmaları arayın, iletişim
+                bilgilerini görün ve seçtiklerinizi tek tıkla CRM listenize ekleyin.
+              </p>
+            </div>
+            <span className="home-card-cta">Firma bulmaya başla →</span>
+          </Link>
+        </div>
+
+        {/* Alt menü – mevcut linklerin daha derli toplu hali */}
+        <nav className="home-nav">
+          <Link href="/pano">Pano</Link>
+          <Link href="/firma-bul">Firma Bul</Link>
+          <Link href="/firmalar">Müşteriler</Link>
+          <Link href="/teklif">Teklif/Hesap</Link>
+          <Link href="/ajanda">Ajanda</Link>
+        </nav>
       </div>
-
-      {/* Butonlar Alanı */}
-      <div className="flex flex-col sm:flex-row gap-6">
-        
-        {/* 1. Buton: Mevcut CRM Listesi */}
-        <Link href="/firmalar" className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col items-center gap-3 hover:border-blue-500 hover:shadow-xl transition cursor-pointer w-64">
-          <div className="bg-blue-100 p-4 rounded-full text-blue-600">
-            <Building2 size={40} />
-          </div>
-          <span className="font-semibold text-lg text-gray-800">Firmaları Yönet</span>
-          <span className="text-xs text-gray-400">Mevcut listenizi düzenleyin</span>
-        </Link>
-
-        {/* 2. Buton: Yeni Google Arama Motoru */}
-        <Link href="/firma-bul" className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col items-center gap-3 hover:border-green-500 hover:shadow-xl transition cursor-pointer w-64">
-          <div className="bg-green-100 p-4 rounded-full text-green-600">
-            <Globe size={40} />
-          </div>
-          <span className="font-semibold text-lg text-gray-800">İnternetten Firma Bul</span>
-          <span className="text-xs text-gray-400">Google Haritalar'dan çek</span>
-        </Link>
-
-      </div>
-
-    </div>
+    </main>
   );
 }

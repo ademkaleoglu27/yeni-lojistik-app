@@ -3,8 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Building2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+// SHADCN Bileşenleri
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function YeniFirmaSayfasi() {
   const router = useRouter();
@@ -15,8 +22,8 @@ export default function YeniFirmaSayfasi() {
     sehir: "",
     yetkili: "",
     telefon: "",
-    sektor: "", // Yeni
-    durum: "Potansiyel" // Yeni (Varsayılan)
+    sektor: "",
+    durum: "Potansiyel"
   });
 
   const kaydet = async (e: React.FormEvent) => {
@@ -43,70 +50,105 @@ export default function YeniFirmaSayfasi() {
   };
 
   return (
-    <div className="p-4 max-w-2xl mx-auto pb-24">
-      <Link href="/firmalar" className="flex items-center gap-2 text-gray-500 mb-6 hover:text-blue-600">
-        <ArrowLeft size={20} />
-        <span>Listeye Dön</span>
+    <div className="p-4 max-w-xl mx-auto pb-24">
+      <Link href="/firmalar">
+        <Button variant="ghost" className="mb-4 text-muted-foreground pl-0 hover:pl-2 transition-all">
+          <ArrowLeft className="mr-2 h-4 w-4" /> Listeye Dön
+        </Button>
       </Link>
 
-      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Yeni Firma Ekle</h1>
-
-        <form onSubmit={kaydet} className="space-y-4">
-          
-          {/* DURUM SEÇİMİ (YENİ) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Durum</label>
-            <select 
-              className="w-full p-3 bg-blue-50 border border-blue-100 rounded-lg text-blue-900 font-bold outline-none"
-              value={formData.durum}
-              onChange={(e) => setFormData({...formData, durum: e.target.value})}
-            >
-              <option value="Potansiyel">Potansiyel (Yeni)</option>
-              <option value="Görüşülüyor">Görüşülüyor</option>
-              <option value="Teklif Verildi">Teklif Verildi</option>
-              <option value="Müşteri Oldu">✅ Müşteri Oldu</option>
-              <option value="Olumsuz">❌ Olumsuz</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Firma Adı</label>
-            <input required type="text" placeholder="Örn: Aras Lojistik" className="w-full p-2 border rounded-lg outline-blue-500"
-              value={formData.ad} onChange={(e) => setFormData({...formData, ad: e.target.value})} />
-          </div>
-
-          {/* SEKTÖR GİRİŞİ (YENİ) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Sektör</label>
-            <input type="text" placeholder="Örn: Nakliyat, Turizm, Gıda..." className="w-full p-2 border rounded-lg outline-blue-500"
-              value={formData.sektor} onChange={(e) => setFormData({...formData, sektor: e.target.value})} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Şehir</label>
-              <input required type="text" placeholder="Örn: İstanbul" className="w-full p-2 border rounded-lg outline-blue-500"
-                value={formData.sehir} onChange={(e) => setFormData({...formData, sehir: e.target.value})} />
+      <Card className="shadow-lg border-t-4 border-t-blue-600">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
+               <Building2 size={24} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Yetkili Kişi</label>
-              <input type="text" placeholder="Ad Soyad" className="w-full p-2 border rounded-lg outline-blue-500"
-                value={formData.yetkili} onChange={(e) => setFormData({...formData, yetkili: e.target.value})} />
+              <CardTitle>Yeni Firma Ekle</CardTitle>
+              <CardDescription>Portföyünüze yeni bir müşteri ekleyin.</CardDescription>
             </div>
           </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={kaydet} className="space-y-4">
+            
+            {/* Durum Seçimi */}
+            <div className="space-y-2">
+              <Label>Müşteri Durumu</Label>
+              <Select onValueChange={(deg) => setFormData({...formData, durum: deg})} defaultValue={formData.durum}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Durum Seçiniz" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Potansiyel">Potansiyel</SelectItem>
+                  <SelectItem value="Görüşülüyor">Görüşülüyor</SelectItem>
+                  <SelectItem value="Teklif Verildi">Teklif Verildi</SelectItem>
+                  <SelectItem value="Müşteri Oldu">✅ Müşteri Oldu</SelectItem>
+                  <SelectItem value="Olumsuz">❌ Olumsuz</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-            <input type="tel" placeholder="0532..." className="w-full p-2 border rounded-lg outline-blue-500"
-              value={formData.telefon} onChange={(e) => setFormData({...formData, telefon: e.target.value})} />
-          </div>
+            {/* Firma Adı */}
+            <div className="space-y-2">
+              <Label>Firma Adı</Label>
+              <Input 
+                required 
+                placeholder="Örn: Aras Lojistik A.Ş." 
+                value={formData.ad} 
+                onChange={(e) => setFormData({...formData, ad: e.target.value})} 
+              />
+            </div>
 
-          <button type="submit" disabled={yukleniyor} className="w-full bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 mt-4 disabled:opacity-50">
-            {yukleniyor ? "Kaydediliyor..." : "Kaydet"}
-          </button>
-        </form>
-      </div>
+            {/* Sektör */}
+            <div className="space-y-2">
+              <Label>Sektör</Label>
+              <Input 
+                placeholder="Örn: Nakliyat, Gıda..." 
+                value={formData.sektor} 
+                onChange={(e) => setFormData({...formData, sektor: e.target.value})} 
+              />
+            </div>
+
+            {/* Şehir ve Yetkili */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Şehir</Label>
+                <Input 
+                  required 
+                  placeholder="İstanbul" 
+                  value={formData.sehir} 
+                  onChange={(e) => setFormData({...formData, sehir: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Yetkili Kişi</Label>
+                <Input 
+                  placeholder="Ad Soyad" 
+                  value={formData.yetkili} 
+                  onChange={(e) => setFormData({...formData, yetkili: e.target.value})} 
+                />
+              </div>
+            </div>
+
+            {/* Telefon */}
+            <div className="space-y-2">
+              <Label>Telefon Numarası</Label>
+              <Input 
+                type="tel" 
+                placeholder="0532..." 
+                value={formData.telefon} 
+                onChange={(e) => setFormData({...formData, telefon: e.target.value})} 
+              />
+            </div>
+
+            <Button type="submit" className="w-full font-bold text-md mt-4" disabled={yukleniyor}>
+              {yukleniyor ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Kaydediliyor...</> : <><Save className="mr-2 h-4 w-4" /> Kaydet</>}
+            </Button>
+
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

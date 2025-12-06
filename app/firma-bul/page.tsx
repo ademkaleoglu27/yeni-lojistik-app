@@ -1,120 +1,216 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Search, Save, MapPin, Globe, Phone, Loader2, Star } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { useState } from 'react';
 
-export default function FirmaBulSayfasi() {
-  const [sektor, setSektor] = useState("");
-  const [sehir, setSehir] = useState("");
-  const [sonuclar, setSonuclar] = useState<any[]>([]);
-  const [yukleniyor, setYukleniyor] = useState(false);
+type SearchResult = {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  segment: string;
+  phone: string;
+  website?: string;
+};
 
-  // ARAMA YAPMA
-  const ara = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setYukleniyor(true);
-    setSonuclar([]);
+type Firm = {
+  id: string;
+  name: string;
+  contact: string;
+  phone: string;
+  city: string;
+  segment: string;
+  note: string;
+  createdAt: string;
+};
+
+const FIRMS_KEY = 'firms-v1';
+
+export default function FirmaBulPage() {
+  const [city, setCity] = useState('');
+  const [segment, setSegment] = useState<'Hepsi' | 'Lojistik' | 'Turizm'>(
+    'Hepsi'
+  );
+  const [keyword, setKeyword] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [addedId, setAddedId] = useState<string | null>(null);
+
+  const handleSearch = async () => {
+    setLoading(true);
+    setError(null);
+    setResults([]);
+    setAddedId(null);
 
     try {
-      const response = await fetch("/api/arama", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sektor, sehir }),
-      });
-      
-      const sonuc = await response.json();
-      if (sonuc.success) {
-        setSonuclar(sonuc.data);
-      } else {
-        alert("Hata: " + sonuc.error);
+      const params = new URLSearchParams();
+      if (city.trim()) params.set('city', city.trim());
+      if (segment !== 'Hepsi') params.set('segment', segment);
+      if (keyword.trim()) params.set('keyword', keyword.trim());
+
+      const res = await fetch('/api/google-places?' + params.toString());
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.error || 'Arama sırasında bir hata oluştu.');
+        return;
       }
-    } catch (err) {
-      alert("Bir hata oluştu.");
+
+      setResults(data.results || []);
+    } catch (e) {
+      console.error(e);
+      setError('Sunucuya bağlanırken bir hata oluştu.');
     } finally {
-      setYukleniyor(false);
+      setLoading(false);
     }
   };
 
-  // CRM'E KAYDETME (SUPABASE)
-  const kaydet = async (firma: any) => {
-    const yeniFirma = {
-      ad: firma.ad,
-      sehir: sehir, // Aradığımız şehri kaydedelim
-      yetkili: "Otomatik (Google)",
-      telefon: firma.telefon,
-      notlar: [{
-        id: Date.now(),
-        tarih: new Date().toLocaleDateString("tr-TR"),
-        metin: `Google'dan ${sektor} aramasıyla eklendi. Adres: ${firma.adres} - Puan: ${firma.puan}`
-      }]
-    };
+  const handleAddToCRM = (item: SearchResult) => {
+    try {
+      const raw = localStorage.getItem(FIRMS_KEY);
+      const list = raw ? (JSON.parse(raw) as Firm[]) : [];
 
-    const { error } = await supabase.from("firmalar").insert([yeniFirma]);
+      const newFirm: Firm = {
+        id: crypto.randomUUID(),
+        name: item.name,
+        contact: '',
+        phone: item.phone || '',
+        city: item.city || city || '',
+        segment:
+          item.segment && item.segment.length > 0
+            ? item.segment
+            : segment === 'Hepsi'
+            ? ''
+            : segment,
+        note: item.address || '',
+        createdAt: new Date().toISOString(),
+      };
 
-    if (!error) {
-      alert(firma.ad + " listene eklendi! ✅");
-    } else {
-      alert("Kaydedilemedi ❌");
+      list.unshift(newFirm);
+      localStorage.setItem(FIRMS_KEY, JSON.stringify(list));
+      setAddedId(item.id);
+      setTimeout(() => setAddedId(null), 1500);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   return (
-    <div className="p-4 max-w-4xl mx-auto pb-20">
-      <Link href="/firmalar" className="flex items-center gap-2 text-gray-500 mb-6 hover:text-blue-600">
-        <ArrowLeft size={20} />
-        <span>Ana Listeye Dön</span>
-      </Link>
+    <div className="teklif-page">
+      <h1 className="teklif-title">İnternetten Müşteri Bul</h1>
+      <p className="teklif-info">
+        Google üzerinden lojistik / turizm firmalarını şehir ve anahtar kelimeye göre
+        arayın. Bulduğunuz firmaları tek tıkla CRM müşteri listenize ekleyin.
+      </p>
 
-      {/* Arama Kutusu */}
-      <div className="bg-white p-6 rounded-xl shadow-md border border-gray-100 mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <Globe className="text-blue-600" />
-          Google'dan Firma Bul
-        </h1>
-        
-        <form onSubmit={ara} className="grid gap-4 sm:grid-cols-3">
-          <input 
-            type="text" 
-            placeholder="Şehir (Örn: Gaziantep)" 
-            className="p-3 border rounded-lg outline-blue-500"
-            value={sehir} onChange={(e) => setSehir(e.target.value)} required
+      {/* Filtreler */}
+      <div className="teklif-form">
+        <div className="field">
+          <label>Şehir</label>
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Örn: İstanbul, İzmir..."
           />
-          <input 
-            type="text" 
-            placeholder="Sektör (Örn: Nakliyat)" 
-            className="p-3 border rounded-lg outline-blue-500"
-            value={sektor} onChange={(e) => setSektor(e.target.value)} required
+        </div>
+
+        <div className="field">
+          <label>Sektör</label>
+          <select
+            value={segment}
+            onChange={(e) => setSegment(e.target.value as any)}
+          >
+          <option value="Hepsi">Hepsi</option>
+            <option value="Lojistik">Lojistik</option>
+            <option value="Turizm">Turizm</option>
+          </select>
+        </div>
+
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label>Anahtar Kelime</label>
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Örn: filolu, tanker, otobüs, tur..."
           />
-          <button disabled={yukleniyor} className="bg-blue-600 text-white p-3 rounded-lg font-bold hover:bg-blue-700 flex justify-center items-center gap-2">
-            {yukleniyor ? <Loader2 className="animate-spin" /> : <Search />}
-            {yukleniyor ? "Google Taranıyor..." : "Bul Getir"}
-          </button>
-        </form>
+        </div>
       </div>
 
-      {/* SONUÇ LİSTESİ */}
-      <div className="grid gap-4">
-        {sonuclar.map((firma, index) => (
-          <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between gap-4 transition hover:shadow-md">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{firma.ad}</h3>
-              <p className="text-sm text-gray-500 flex items-center gap-1 mt-1"><MapPin size={14}/> {firma.adres}</p>
-              <p className="text-sm text-gray-500 flex items-center gap-1 mt-1"><Phone size={14}/> {firma.telefon}</p>
-              
-              <div className="flex gap-2 mt-2 items-center">
-                 {firma.puan > 0 && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded flex items-center gap-1"><Star size={10} fill="currentColor"/> {firma.puan}</span>}
-                 {firma.web !== "Yok" && <a href={firma.web} target="_blank" className="text-blue-500 text-xs underline">Web Sitesi</a>}
-              </div>
+      <button
+        type="button"
+        className="po-link"
+        style={{ marginTop: '0.5rem', marginBottom: '0.8rem' }}
+        onClick={handleSearch}
+        disabled={loading}
+      >
+        {loading ? 'Aranıyor...' : 'Müşteri Bul'}
+      </button>
+
+      {error && (
+        <p className="error" style={{ marginBottom: '0.6rem' }}>
+          {error}
+        </p>
+      )}
+
+      {/* Sonuçlar */}
+      <div className="firm-list">
+        {loading && (
+          <p className="offer-hint">Google üzerinde arama yapılıyor...</p>
+        )}
+
+        {!loading && results.length === 0 && !error && (
+          <p className="offer-hint">
+            Henüz sonuç yok. Bir şehir ve (isteğe bağlı) sektör / anahtar kelime
+            girerek &quot;Müşteri Bul&quot; butonuna basın.
+          </p>
+        )}
+
+        {results.map((f) => (
+          <div key={f.id} className="firm-card">
+            <div className="firm-row">
+              <span className="firm-name">{f.name}</span>
+              <span className="firm-meta">
+                {(f.city || city || '') +
+                  (f.segment ? ` • ${f.segment}` : '')}
+              </span>
             </div>
-            
-            <button 
-              onClick={() => kaydet(firma)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 flex items-center justify-center gap-2 h-fit self-center min-w-[140px]"
+
+            <div className="firm-row">
+              <span>{f.address}</span>
+            </div>
+
+            {f.phone && (
+              <div className="firm-row">
+                <span>{f.phone}</span>
+              </div>
+            )}
+
+            {f.website && (
+              <div className="firm-row">
+                <a
+                  href={f.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '0.78rem' }}
+                >
+                  Web Sitesi Aç
+                </a>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="po-link"
+              style={{
+                marginTop: '0.4rem',
+                padding: '0.3rem 0.8rem',
+                fontSize: '0.78rem',
+              }}
+              onClick={() => handleAddToCRM(f)}
             >
-              <Save size={18} />
-              CRM'e Ekle
+              {addedId === f.id ? 'CRM’e Eklendi ✓' : 'CRM’e Ekle'}
             </button>
           </div>
         ))}

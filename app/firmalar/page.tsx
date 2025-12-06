@@ -1,120 +1,204 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Plus, MapPin, Phone, User, Building, Trash2 } from "lucide-react";
-// DİKKAT: Az önce kurduğumuz Supabase bağlantısını çağırıyoruz
-import { supabase } from "../../lib/supabase";
+import { useEffect, useState } from 'react';
 
-export default function FirmalarSayfasi() {
-  const [firmalar, setFirmalar] = useState<any[]>([]);
+type Firm = {
+  id: string;
+  name: string;
+  contact: string;
+  phone: string;
+  city: string;
+  segment: string;
+  note: string;
+  createdAt: string;
+};
 
-  // Sayfa açılınca çalışır
+const STORAGE_KEY = 'firms-v1';
+
+export default function FirmalarPage() {
+  const [firms, setFirms] = useState<Firm[]>([]);
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('');
+  const [segment, setSegment] = useState('');
+  const [note, setNote] = useState('');
+  const [search, setSearch] = useState('');
+
+  // LocalStorage'dan yükle
   useEffect(() => {
-    verileriGetir();
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Firm[];
+      setFirms(parsed);
+    } catch {
+      // ignore
+    }
   }, []);
 
-  // 1. BULUTTAN VERİ ÇEKME FONKSİYONU
-  async function verileriGetir() {
-    // "firmalar" tablosuna git, her şeyi (*) al, ID'ye göre tersten sırala (en yeni en üstte)
-    const { data, error } = await supabase
-      .from("firmalar")
-      .select("*")
-      .order('id', { ascending: false });
-    
-    if (error) {
-      console.error("Veri çekme hatası:", error);
-    } else {
-      setFirmalar(data || []);
-    }
-  }
-
-  // 2. BULUTTAN SİLME FONKSİYONU
-  const sil = async (id: number) => {
-    if (confirm("Bu firmayı silmek istediğine emin misin?")) {
-      // Supabase'den sil
-      const { error } = await supabase.from("firmalar").delete().eq("id", id);
-      
-      if (!error) {
-        // Ekrandaki listeden de sil (tekrar yüklemeye gerek kalmasın)
-        setFirmalar(firmalar.filter(f => f.id !== id));
-      } else {
-        alert("Silinirken bir hata oluştu!");
-      }
-    }
+  const saveFirms = (list: Firm[]) => {
+    setFirms(list);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
   };
 
+  const handleAdd = () => {
+    if (!name.trim()) return;
+
+    const newFirm: Firm = {
+      id: crypto.randomUUID(),
+      name: name.trim(),
+      contact: contact.trim(),
+      phone: phone.trim(),
+      city: city.trim(),
+      segment: segment.trim(),
+      note: note.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updated = [newFirm, ...firms];
+    saveFirms(updated);
+
+    setName('');
+    setContact('');
+    setPhone('');
+    setCity('');
+    setSegment('');
+    setNote('');
+  };
+
+  const filtered = firms.filter((f) => {
+    if (!search.trim()) return true;
+    const s = search.trim().toLowerCase();
+    return (
+      f.name.toLowerCase().includes(s) ||
+      f.contact.toLowerCase().includes(s) ||
+      f.city.toLowerCase().includes(s) ||
+      f.segment.toLowerCase().includes(s) ||
+      f.note.toLowerCase().includes(s) ||
+      f.phone.toLowerCase().includes(s)
+    );
+  });
+
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Firma Listesi ({firmalar.length})</h1>
-        
-        <Link href="/firmalar/yeni" className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition shadow-sm">
-          <Plus size={20} />
-          <span>Yeni Firma Ekle</span>
-        </Link>
+    <div className="teklif-page">
+      <h1 className="teklif-title">Müşteri Listesi / CRM</h1>
+      <p className="teklif-info">
+        Müşterilerinizi buradan yönetin. Yeni firma ekleyin, yetkili ve iletişim
+        bilgilerini girin, arama çubuğu ile hızlıca bulun.
+      </p>
+
+      {/* Arama çubuğu */}
+      <div className="search-row">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Firma, yetkili, şehir, sektör veya not içinde ara..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {firmalar.length === 0 ? (
-        // LİSTE BOŞSA
-        <div className="bg-white rounded-lg shadow-md border border-gray-100 p-12 text-center text-gray-500">
-          <div className="flex justify-center mb-4">
-            <div className="bg-blue-50 p-4 rounded-full">
-              <Plus size={40} className="text-blue-400" />
-            </div>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900">Henüz firma yok</h3>
-          <p className="mt-1">Veri tabanı şu an boş. Yeni ekleyerek başlayın.</p>
+      {/* Müşteri ekleme formu */}
+      <div className="teklif-form">
+        <div className="field">
+          <label>Firma Adı</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Örn: AC Lojistik AŞ"
+          />
         </div>
-      ) : (
-        // LİSTE DOLUYSA
-        <div className="grid gap-4">
-          {firmalar.map((firma) => (
-            <div key={firma.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              
-              <div className="flex items-start gap-4">
-                <div className="bg-blue-100 p-3 rounded-full text-blue-600 mt-1">
-                  <Building size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{firma.ad}</h3>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <User size={14} />
-                      <span>{firma.yetkili}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MapPin size={14} />
-                      <span>{firma.sehir}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <a href={`tel:${firma.telefon}`} className="p-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 border border-green-200">
-                  <Phone size={20} />
-                </a>
-                
-                <Link 
-                  href={`/firmalar/${firma.id}`}
-                  className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm font-medium"
-                >
-                  Detaylar
-                </Link>
-
-                <button 
-                  onClick={() => sil(firma.id)}
-                  className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 border border-red-200"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
-
-            </div>
-          ))}
+        <div className="field">
+          <label>Yetkili Adı</label>
+          <input
+            type="text"
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder="Örn: Ahmet Çalışkan"
+          />
         </div>
-      )}
+        <div className="field">
+          <label>Telefon</label>
+          <input
+            type="text"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Örn: 05xx xxx xx xx"
+          />
+        </div>
+        <div className="field">
+          <label>Şehir</label>
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="Örn: İstanbul"
+          />
+        </div>
+        <div className="field">
+          <label>Sektör / Segment</label>
+          <input
+            type="text"
+            value={segment}
+            onChange={(e) => setSegment(e.target.value)}
+            placeholder="Örn: Lojistik / Turizm"
+          />
+        </div>
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label>Not (opsiyonel)</label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Örn: Filoda 20 araç var, yakıt tüketimi yüksek."
+          />
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="po-link"
+        style={{ marginTop: '0.5rem', marginBottom: '1rem' }}
+        onClick={handleAdd}
+      >
+        Müşteri Ekle
+      </button>
+
+      {/* Müşteri kartları */}
+      <div className="firm-list">
+        {filtered.length === 0 ? (
+          <p className="offer-hint">
+            Kayıtlı müşteri bulunamadı. Yeni müşteri ekleyebilir veya arama
+            filtresini temizleyebilirsiniz.
+          </p>
+        ) : (
+          filtered.map((f) => (
+            <div key={f.id} className="firm-card">
+              <div className="firm-row">
+                <span className="firm-name">{f.name}</span>
+                <span className="firm-meta">
+                  {f.createdAt
+                    ? new Date(f.createdAt).toLocaleDateString('tr-TR')
+                    : ''}
+                </span>
+              </div>
+              <div className="firm-row">
+                <span>
+                  {f.contact || '-'} {f.phone && `• ${f.phone}`}
+                </span>
+              </div>
+              <div className="firm-row">
+                <span>{f.city || ''}</span>
+                <span>{f.segment || ''}</span>
+              </div>
+              {f.note && <p className="firm-note">Not: {f.note}</p>}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }

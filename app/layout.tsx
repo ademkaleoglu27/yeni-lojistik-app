@@ -1,31 +1,18 @@
-import type { Metadata } from "next";
-import "./globals.css";
-import { Header } from "@/components/header"; 
-import { BottomNav } from "@/components/bottom-nav";
+import './globals.css';
+import type { Metadata } from 'next';
+import Navbar from '../components/layout/Navbar';
 
 export const metadata: Metadata = {
-  title: "Lojistik Takip",
-  description: "Saha satış ve lojistik takip uygulaması",
+  title: 'Lojistik Paneli',
+  description: 'E-ticaret + CRM paneli',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="tr">
-      <body className="bg-gray-50 min-h-screen pb-20">
-        
-        {/* Üst Menü */}
-        <Header />
-        
-        {/* Sayfa İçeriği */}
-        <main>{children}</main>
-
-        {/* Alt Menü */}
-        <BottomNav />
-        
+      <body className="bg-background text-text-primary">
+        <Navbar />
+        <main className="max-w-6xl mx-auto px-4 py-4">{children}</main>
       </body>
     </html>
   );
